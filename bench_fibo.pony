@@ -1,5 +1,20 @@
 use "ponybench"
 use "collections"
+use "math"
+
+class iso BenchStdlibFibonacci is Bench
+  fun name(): String => "StdLib"
+
+  fun apply(h: BenchHelper) =>
+    var n: U64 = 0
+    for i in h.iter() do
+      let fibo = Fibonacci
+      for j in Range[U32](0,502) do
+         fibo.has_next() 
+         n = fibo.next()
+      end
+    end
+
 
 class iso BenchInlineFibonacci is Bench
   fun name(): String => "Inline"
@@ -10,15 +25,14 @@ class iso BenchInlineFibonacci is Bench
     for i in h.iter() do
       n = 0
       n' = 1
-      for j in Range[U32](0,200) do
+      for j in Range[U32](0,500) do
          n = n' = n + n'
       end
     end
-    /*h.log(n.string())*/
 
 
 class iso BenchLinearFibonacci is Bench
-  fun name(): String => "BenchLinear"
+  fun name(): String => "Linear"
 
   fun linear_fib(order: U32): U64 =>
     var n: U64 = 0
@@ -35,11 +49,10 @@ class iso BenchLinearFibonacci is Bench
     for i in h.iter() do
       n = linear_fib(200)
     end
-    /*h.log(n.string())*/
 
 
 class iso BenchRecursiveFibonacci is Bench
-  fun name(): String => "BenchRecursive"
+  fun name(): String => "Recursive"
 
   fun recursive_fib(order: U32): U64 =>
     match order
@@ -65,4 +78,5 @@ actor Main is BenchList
   fun tag benchs(bench: PonyBench) =>
     bench(BenchInlineFibonacci)
     bench(BenchLinearFibonacci)
-    //bench(BenchRecursiveFibonacci)
+    bench(BenchStdlibFibonacci)
+    bench(BenchRecursiveFibonacci)
