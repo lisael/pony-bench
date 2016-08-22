@@ -95,38 +95,72 @@ class BenchSequence
     log(cycles.string() + " loops. Took " +
         delta.string() + " ns => " +
         per_loop.string() + "ns per loop")
+    _runner.result(BenchResult(cycles, delta))
+
+class val BenchResult
+  let loops: U64
+  let duration: U64
+
+  new val create(loops': U64, duration': U64) =>
+    loops = loops'
+    duration = duration'
 
 actor _BenchRunner
   let _bench: Bench iso
-  let _env: Env
+  let _list: PonyBench tag
   let _name: String
+  let _results: Array[BenchResult val] = Array[BenchResult val]
+  var _runs: U8 = 3
 
-  new create(bench: Bench iso, env: Env) =>
-    _env = env
+  new create(bench: Bench iso, list: PonyBench) =>
+    _list = list
     _name = bench.name()
     _bench = consume bench
 
   be apply() =>
+    if _runs == 0 then
+      log("End")
+      _list._result(_select_result())
+      return
+    end
     let helper = BenchHelper(this) 
-    log("Starting bench")
+    log("Run " + _runs.string())
     _bench(helper)
-    //log("Finnished bench: " + _bench.name())
+    _runs = _runs - 1
 
-  be log(s: String) =>
-    _env.out.write(_name + ":" + s + "\n")
+  be result(res: BenchResult val) =>
+    _results.push(res)
+    this()
+
+  be log(msg: String) =>
+    _list.log(_name + ": " + msg)
+
+  fun _select_result(): BenchResult =>
+    try _results(0) else BenchResult(0,0) end
 
 actor PonyBench
   let _env: Env
+  let _results: Array[BenchResult val] = Array[BenchResult val]
+  var _num_benchs: USize = 0
 
   new create(env: Env, benchs: BenchList tag) =>
     _env = env
     benchs.benchs(this)
 
   be apply(bench: Bench iso) =>
-    var runner = _BenchRunner(consume bench, _env)
+    var runner = _BenchRunner(consume bench, this)
     runner()
+    _num_benchs = _num_benchs + 1
+
+  be _result(res: BenchResult val) =>
+    _results.push(res)
+    log("###" + _results.size().string() + " " + _num_benchs.string())
+    if _results.size() == _num_benchs then
+      _print_report()
+    end
+
+  be _print_report() =>
+    log("Done!")
 
   be log(s: String) =>
     _env.out.write(s + "\n")
-
-

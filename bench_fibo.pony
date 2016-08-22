@@ -76,7 +76,7 @@ actor Main is BenchList
     PonyBench(env, this)
 
   fun tag benchs(bench: PonyBench) =>
-    bench(BenchInlineFibonacci)
-    bench(BenchLinearFibonacci)
-    bench(BenchStdlibFibonacci)
     bench(BenchRecursiveFibonacci)
+    bench(BenchLinearFibonacci)
+    bench(BenchInlineFibonacci)
+    bench(BenchStdlibFibonacci)
