@@ -18,26 +18,30 @@ trait Bench
 
 class val BenchHelper
   let _runner: _BenchRunner tag
+  let _bench_name: String
 
-  new val create(runner: _BenchRunner tag) =>
+  new val create(runner: _BenchRunner tag, name: String val) =>
     _runner = runner
+    _bench_name = name
 
   fun iter(): BenchSequence =>
-    BenchSequence(_runner)
+    BenchSequence(_runner, _bench_name)
 
   fun log(s: String) =>
     _runner.log(s)
 
 class BenchSequence
   let _runner: _BenchRunner tag
+  let _bench_name: String
   var cycles: U64 = 2
   var count: U64 = 2
   var started: Bool = false
   var start_time: (I64, I64) = (0,0)
   var target_time: U64 =  5_000_000_000
 
-  new create(runner: _BenchRunner tag) =>
+  new create(runner: _BenchRunner tag, name: String val) =>
     _runner = runner
+    _bench_name = name
 
   fun log(s: String) =>
     _runner.log(s)
@@ -95,35 +99,44 @@ class BenchSequence
     log(cycles.string() + " loops. Took " +
         delta.string() + " ns => " +
         per_loop.string() + "ns per loop")
-    _runner.result(BenchResult(cycles, delta))
+    _runner.result(BenchResult(_bench_name, cycles, delta))
 
 class val BenchResult
+  let name: String
   let loops: U64
   let duration: U64
 
-  new val create(loops': U64, duration': U64) =>
+  new val create(name': String, loops': U64, duration': U64) =>
+    name = name'
     loops = loops'
     duration = duration'
 
+  fun string(): String =>
+    var per_loop: U64 = duration / loops
+    name + ": " +
+    loops.string() + " loops. Took " +
+    duration.string() + " ns => " +
+    per_loop.string() + " ns per loop"
+
 actor _BenchRunner
   let _bench: Bench iso
-  let _list: PonyBench tag
+  let _main: PonyBench tag
   let _name: String
   let _results: Array[BenchResult val] = Array[BenchResult val]
   var _runs: U8 = 3
 
   new create(bench: Bench iso, list: PonyBench) =>
-    _list = list
+    _main = list
     _name = bench.name()
     _bench = consume bench
 
   be apply() =>
     if _runs == 0 then
       log("End")
-      _list._result(_select_result())
+      _main._result(_select_result())
       return
     end
-    let helper = BenchHelper(this) 
+    let helper = BenchHelper(this, _bench.name()) 
     log("Run " + _runs.string())
     _bench(helper)
     _runs = _runs - 1
@@ -133,10 +146,10 @@ actor _BenchRunner
     this()
 
   be log(msg: String) =>
-    _list.log(_name + ": " + msg)
+    _main.log(_name + ": " + msg)
 
   fun _select_result(): BenchResult =>
-    try _results(0) else BenchResult(0,0) end
+    try _results(0) else BenchResult("", 0, 0) end
 
 actor PonyBench
   let _env: Env
@@ -160,6 +173,10 @@ actor PonyBench
     end
 
   be _print_report() =>
+    log("Best of 3 runs:")
+    for result in _results.values() do
+      log(result.string())
+    end
     log("Done!")
 
   be log(s: String) =>
